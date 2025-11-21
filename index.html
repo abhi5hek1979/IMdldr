@@ -1,46 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Downloader</title>
+    <title>Simple Downloader</title>
     <style>
-        /* --- STYLES (CSS) --- */
+        /* Basic Styling to ensure visibility */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #121212; /* Dark Mode Background */
-            color: #e0e0e0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
+            background-color: white;
+            color: black;
             padding: 20px;
-            box-sizing: border-box;
+            font-family: sans-serif;
         }
-
-        .container {
-            background-color: #1e1e1e; /* Card Background */
-            padding: 25px;
-            border-radius: 16px;
+        input {
+            display: block;
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid black;
+        }
+        button {
+            padding: 15px;
+            background-color: blue;
+            color: white;
+            font-size: 18px;
+            border: none;
             width: 100%;
-            max-width: 400px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            text-align: center;
         }
-
-        h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            color: #bb86fc; /* Purple Accent */
+        img {
+            max-width: 100%;
+            margin-top: 20px;
+            display: none; /* Hidden until loaded */
+            border: 2px solid black;
         }
+    </style>
+</head>
+<body>
 
-        .input-group {
-            margin-bottom: 15px;
-            text-align: left;
-        }
+    <h1>Image Downloader</h1>
+    
+    <label>Paste URL:</label>
+    <input type="text" id="urlInput" placeholder="Paste link here...">
 
-        label {
-            font-size: 14px;
-            color: #aaaaaa;
-            display: block
+    <label>File Name:</label>
+    <input type="text" id="fileName" placeholder="image-name">
+
+    <button id="downloadBtn">Download Now</button>
+    
+    <p id="statusMessage"></p>
+
+    <img id="previewImg" src="" alt="Preview">
+
+    <script>
+        // We wrap code in this event listener to ensure page is fully loaded first
+        document.addEventListener("DOMContentLoaded", function() {
+            
+            const urlInput = document.getElementById('urlInput');
+            const fileNameInput = document.getElementById('fileName');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            const previewImg = document.getElementById('previewImg');
+
+            // Show preview
+            urlInput.addEventListener('input', function() {
+                if(urlInput.value) {
+                    previewImg.src = urlInput.value;
+                    previewImg.style.display = 'block';
+                }
+            });
+
+            // Download logic
+            downloadBtn.addEventListener('click', function() {
+                const url = urlInput.value;
+                let name = fileNameInput.value || 'download';
+
+                if (!url) {
+                    alert("Please paste a URL first");
+                    return;
+                }
+
+                statusMessage.innerText = "Downloading...";
+                
+                fetch(url)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = name + ".jpg";
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        statusMessage.innerText = "Done! Check downloads.";
+                    })
+                    .catch(err => {
+                        statusMessage.innerText = "Error: Website blocked the download.";
+                        alert("Error: This website prevents direct downloads.");
+                    });
+            });
+
+        });
+    </script>
+
+</body>
+</html>
