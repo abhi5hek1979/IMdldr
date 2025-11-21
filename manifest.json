@@ -1,8 +1,0 @@
-{
-  "name": "Image Filter PWA",
-  "short_name": "ImgFilter",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "description": "Fetches, filters, and downloads images from URLs."
-}
