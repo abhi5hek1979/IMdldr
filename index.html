@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Image Scraper</title>
+    <title>Robust Image Scraper</title>
     <style>
-        /* --- CSS STYLING --- */
+        /* --- STYLES --- */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: sans-serif;
             background-color: #121212;
-            color: white;
+            color: #eee;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
         }
 
         .container {
@@ -19,13 +19,12 @@
             margin: 0 auto;
             background-color: #1e1e1e;
             padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        h2 { color: #bb86fc; margin-top: 0; text-align: center; }
+        h2 { color: #bb86fc; text-align: center; margin-top: 0; }
 
-        /* Inputs */
         .input-group { margin-bottom: 15px; }
         
         label {
@@ -36,7 +35,7 @@
             margin-bottom: 5px;
         }
 
-        input[type="text"], input[type="number"] {
+        input {
             width: 100%;
             padding: 12px;
             border-radius: 8px;
@@ -44,16 +43,7 @@
             background-color: #2c2c2c;
             color: white;
             box-sizing: border-box;
-            font-size: 16px;
         }
-
-        /* Filter Row */
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .filters div { flex: 1; }
 
         button {
             width: 100%;
@@ -65,22 +55,26 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+            margin-top: 10px;
         }
         button:disabled { background-color: #555; color: #888; }
 
         #status { 
             margin: 15px 0; 
-            font-size: 14px; 
-            color: #aaa; 
-            text-align: center; 
+            font-size: 13px; 
+            background: #252525;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #333;
             min-height: 20px;
+            font-family: monospace; 
+            white-space: pre-wrap; /* Keeps log lines separate */
         }
 
-        /* Image Grid */
         .image-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
         }
 
         .img-card {
@@ -89,34 +83,13 @@
             overflow: hidden;
             border: 1px solid #333;
             position: relative;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .img-wrapper {
-            position: relative;
-            width: 100%;
-            height: 120px;
-            background-color: #222;
         }
 
         .img-card img {
             width: 100%;
-            height: 100%;
+            height: 120px;
             object-fit: cover;
             display: block;
-        }
-
-        /* Resolution Badge */
-        .res-badge {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background-color: rgba(0,0,0,0.7);
-            color: #fff;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-top-left-radius: 6px;
         }
 
         .download-btn-small {
@@ -124,38 +97,26 @@
             padding: 8px;
             background-color: #333;
             color: #bb86fc;
-            font-size: 13px;
+            font-size: 12px;
             border: none;
             border-top: 1px solid #444;
             border-radius: 0;
         }
-        .download-btn-small:active { background-color: #444; }
-
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Smart Scraper</h2>
+        <h2>Robust Scraper V3</h2>
         
         <div class="input-group">
-            <label>Website URL</label>
+            <label>Target Website URL</label>
             <input type="text" id="siteUrl" placeholder="https://www.wikipedia.org">
         </div>
 
-        <div class="filters">
-            <div>
-                <label>Min Width (px)</label>
-                <input type="number" id="minWidth" value="200">
-            </div>
-            <div>
-                <label>Min Height (px)</label>
-                <input type="number" id="minHeight" value="200">
-            </div>
-        </div>
-
         <button id="scanBtn">Scan Page</button>
-        <p id="status"></p>
+        
+        <div id="status">Ready to scan...</div>
 
         <div class="image-grid" id="grid"></div>
     </div>
@@ -163,112 +124,103 @@
     <script>
         const scanBtn = document.getElementById('scanBtn');
         const siteUrlInput = document.getElementById('siteUrl');
-        const minWidthInput = document.getElementById('minWidth');
-        const minHeightInput = document.getElementById('minHeight');
-        const statusTxt = document.getElementById('status');
+        const statusDiv = document.getElementById('status');
         const grid = document.getElementById('grid');
+
+        // Helper to log messages to the screen
+        function log(msg, isError = false) {
+            statusDiv.innerText = msg;
+            statusDiv.style.color = isError ? "#ff6b6b" : "#eee";
+        }
 
         scanBtn.addEventListener('click', async () => {
             let url = siteUrlInput.value.trim();
-            const minW = parseInt(minWidthInput.value) || 0;
-            const minH = parseInt(minHeightInput.value) || 0;
             
-            if (!url) {
-                statusTxt.innerText = "⚠️ Please enter a URL";
-                return;
-            }
-            
-            if (!url.startsWith('http')) {
-                url = 'https://' + url;
-                siteUrlInput.value = url;
-            }
+            if (!url) { log("Please enter a URL first.", true); return; }
+            if (!url.startsWith('http')) { url = 'https://' + url; siteUrlInput.value = url; }
 
-            statusTxt.innerText = "Scanning... (Fetching HTML)";
             grid.innerHTML = ''; 
             scanBtn.disabled = true;
-
+            
+            // ATTEMPT 1: AllOrigins Proxy
+            log(`Attempting Server 1 (AllOrigins)...`);
+            
             try {
-                // 1. Fetch HTML via AllOrigins Proxy
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-                const response = await fetch(proxyUrl);
-                const data = await response.json();
-
-                if (!data.contents) throw new Error("No content found");
-
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(data.contents, 'text/html');
-                const imgTags = doc.querySelectorAll('img');
+                const content = await fetchViaAllOrigins(url);
+                processHtml(content, url);
+            } catch (err1) {
+                console.error(err1);
                 
-                statusTxt.innerText = `Found ${imgTags.length} images. Checking sizes...`;
-
-                let visibleCount = 0;
-                let processedCount = 0;
-
-                if(imgTags.length === 0) {
-                    statusTxt.innerText = "No images found on page.";
+                // ATTEMPT 2: CorsProxy.io
+                log(`Server 1 blocked. Trying Server 2 (CorsProxy)...`);
+                
+                try {
+                    const content2 = await fetchViaCorsProxy(url);
+                    processHtml(content2, url);
+                } catch (err2) {
+                    console.error(err2);
+                    log(`❌ FAILED. \nBoth servers were blocked by the target site.\nReason: ${err2.message}`, true);
                     scanBtn.disabled = false;
-                    return;
                 }
-
-                // 2. Process every image
-                imgTags.forEach(imgTag => {
-                    let src = imgTag.getAttribute('src');
-                    if (!src) {
-                        checkFinished();
-                        return;
-                    }
-
-                    // Fix relative URLs
-                    if (src.startsWith('//')) src = 'https:' + src;
-                    else if (src.startsWith('/')) src = new URL(url).origin + src;
-                    else if (!src.startsWith('http')) src = url + '/' + src;
-
-                    // 3. Create an invisible image loader to check dimensions
-                    const tempImg = new Image();
-                    tempImg.src = src;
-
-                    tempImg.onload = function() {
-                        // FILTER LOGIC: Check if it meets user requirements
-                        if (this.naturalWidth >= minW && this.naturalHeight >= minH) {
-                            createImageCard(src, this.naturalWidth, this.naturalHeight);
-                            visibleCount++;
-                        }
-                        checkFinished();
-                    };
-
-                    tempImg.onerror = function() {
-                        checkFinished(); // Skip broken images
-                    };
-                });
-
-                function checkFinished() {
-                    processedCount++;
-                    if (processedCount >= imgTags.length) {
-                        scanBtn.disabled = false;
-                        if (visibleCount === 0) {
-                            statusTxt.innerText = `Scanned ${imgTags.length} images, but none matched your size filters.`;
-                        } else {
-                            statusTxt.innerText = `Showing ${visibleCount} images (Filtered ${imgTags.length - visibleCount} small images).`;
-                        }
-                    }
-                }
-
-            } catch (error) {
-                console.error(error);
-                statusTxt.innerText = "❌ Error: Could not scan site.";
-                scanBtn.disabled = false;
             }
         });
 
-        function createImageCard(url, w, h) {
+        // --- PROXY METHOD 1 ---
+        async function fetchViaAllOrigins(targetUrl) {
+            const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error("Network Error");
+            if (!data.contents) throw new Error("Empty Response");
+            return data.contents;
+        }
+
+        // --- PROXY METHOD 2 ---
+        async function fetchViaCorsProxy(targetUrl) {
+            // This proxy returns raw HTML directly
+            const response = await fetch(`https://corsproxy.io/?` + encodeURIComponent(targetUrl));
+            if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+            return await response.text();
+        }
+
+        // --- PROCESSING LOGIC ---
+        function processHtml(htmlString, baseUrl) {
+            log("HTML received! extracting images...");
+            
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            const imgTags = doc.querySelectorAll('img');
+
+            if (imgTags.length === 0) {
+                log("✅ Scan complete, but NO images found in the code.");
+                scanBtn.disabled = false;
+                return;
+            }
+
+            let count = 0;
+            imgTags.forEach(img => {
+                let src = img.getAttribute('src');
+                if (!src) return;
+
+                // Fix URL formatting
+                if (src.startsWith('//')) src = 'https:' + src;
+                else if (src.startsWith('/')) src = new URL(baseUrl).origin + src;
+                else if (!src.startsWith('http')) src = baseUrl + '/' + src;
+
+                // Basic Filter: Ignore tiny tracking pixels (heuristic)
+                // We can't check real size yet, so we display everything reasonable
+                createImageCard(src);
+                count++;
+            });
+
+            log(`✅ Success! Found ${count} images.`);
+            scanBtn.disabled = false;
+        }
+
+        function createImageCard(url) {
             const div = document.createElement('div');
             div.className = 'img-card';
-
             div.innerHTML = `
-                <div class="img-wrapper">
-                    <img src="${url}" alt="Scanned Image">
-                    <div class="res-badge">${w} x ${h}</div>
-                </div>
+                <img src="${url}" onerror="this.parentElement.style.display='none'">
                 <button class="download-btn-small" onclick="downloadOne('${url}')">Download</button>
             `;
             grid.appendChild(div);
@@ -277,7 +229,7 @@
         function downloadOne(url) {
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'image.jpg'; 
+            a.download = 'image.jpg';
             a.target = '_blank';
             document.body.appendChild(a);
             a.click();
