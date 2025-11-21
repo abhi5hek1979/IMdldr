@@ -1,104 +1,288 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Downloader</title>
+    <title>Smart Image Scraper</title>
     <style>
-        /* Basic Styling to ensure visibility */
+        /* --- CSS STYLING --- */
         body {
-            background-color: white;
-            color: black;
-            padding: 20px;
-            font-family: sans-serif;
-        }
-        input {
-            display: block;
-            width: 90%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid black;
-        }
-        button {
-            padding: 15px;
-            background-color: blue;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #121212;
             color: white;
-            font-size: 18px;
-            border: none;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+
+        h2 { color: #bb86fc; margin-top: 0; text-align: center; }
+
+        /* Inputs */
+        .input-group { margin-bottom: 15px; }
+        
+        label {
+            font-size: 12px;
+            color: #aaa;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], input[type="number"] {
             width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background-color: #2c2c2c;
+            color: white;
+            box-sizing: border-box;
+            font-size: 16px;
         }
-        img {
-            max-width: 100%;
-            margin-top: 20px;
-            display: none; /* Hidden until loaded */
-            border: 2px solid black;
+
+        /* Filter Row */
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
         }
+        .filters div { flex: 1; }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #03dac6;
+            color: black;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:disabled { background-color: #555; color: #888; }
+
+        #status { 
+            margin: 15px 0; 
+            font-size: 14px; 
+            color: #aaa; 
+            text-align: center; 
+            min-height: 20px;
+        }
+
+        /* Image Grid */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .img-card {
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #333;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .img-wrapper {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            background-color: #222;
+        }
+
+        .img-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Resolution Badge */
+        .res-badge {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background-color: rgba(0,0,0,0.7);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-top-left-radius: 6px;
+        }
+
+        .download-btn-small {
+            width: 100%;
+            padding: 8px;
+            background-color: #333;
+            color: #bb86fc;
+            font-size: 13px;
+            border: none;
+            border-top: 1px solid #444;
+            border-radius: 0;
+        }
+        .download-btn-small:active { background-color: #444; }
+
     </style>
 </head>
 <body>
 
-    <h1>Image Downloader</h1>
-    
-    <label>Paste URL:</label>
-    <input type="text" id="urlInput" placeholder="Paste link here...">
+    <div class="container">
+        <h2>Smart Scraper</h2>
+        
+        <div class="input-group">
+            <label>Website URL</label>
+            <input type="text" id="siteUrl" placeholder="https://www.wikipedia.org">
+        </div>
 
-    <label>File Name:</label>
-    <input type="text" id="fileName" placeholder="image-name">
+        <div class="filters">
+            <div>
+                <label>Min Width (px)</label>
+                <input type="number" id="minWidth" value="200">
+            </div>
+            <div>
+                <label>Min Height (px)</label>
+                <input type="number" id="minHeight" value="200">
+            </div>
+        </div>
 
-    <button id="downloadBtn">Download Now</button>
-    
-    <p id="statusMessage"></p>
+        <button id="scanBtn">Scan Page</button>
+        <p id="status"></p>
 
-    <img id="previewImg" src="" alt="Preview">
+        <div class="image-grid" id="grid"></div>
+    </div>
 
     <script>
-        // We wrap code in this event listener to ensure page is fully loaded first
-        document.addEventListener("DOMContentLoaded", function() {
+        const scanBtn = document.getElementById('scanBtn');
+        const siteUrlInput = document.getElementById('siteUrl');
+        const minWidthInput = document.getElementById('minWidth');
+        const minHeightInput = document.getElementById('minHeight');
+        const statusTxt = document.getElementById('status');
+        const grid = document.getElementById('grid');
+
+        scanBtn.addEventListener('click', async () => {
+            let url = siteUrlInput.value.trim();
+            const minW = parseInt(minWidthInput.value) || 0;
+            const minH = parseInt(minHeightInput.value) || 0;
             
-            const urlInput = document.getElementById('urlInput');
-            const fileNameInput = document.getElementById('fileName');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const statusMessage = document.getElementById('statusMessage');
-            const previewImg = document.getElementById('previewImg');
+            if (!url) {
+                statusTxt.innerText = "⚠️ Please enter a URL";
+                return;
+            }
+            
+            if (!url.startsWith('http')) {
+                url = 'https://' + url;
+                siteUrlInput.value = url;
+            }
 
-            // Show preview
-            urlInput.addEventListener('input', function() {
-                if(urlInput.value) {
-                    previewImg.src = urlInput.value;
-                    previewImg.style.display = 'block';
-                }
-            });
+            statusTxt.innerText = "Scanning... (Fetching HTML)";
+            grid.innerHTML = ''; 
+            scanBtn.disabled = true;
 
-            // Download logic
-            downloadBtn.addEventListener('click', function() {
-                const url = urlInput.value;
-                let name = fileNameInput.value || 'download';
+            try {
+                // 1. Fetch HTML via AllOrigins Proxy
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                const data = await response.json();
 
-                if (!url) {
-                    alert("Please paste a URL first");
+                if (!data.contents) throw new Error("No content found");
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data.contents, 'text/html');
+                const imgTags = doc.querySelectorAll('img');
+                
+                statusTxt.innerText = `Found ${imgTags.length} images. Checking sizes...`;
+
+                let visibleCount = 0;
+                let processedCount = 0;
+
+                if(imgTags.length === 0) {
+                    statusTxt.innerText = "No images found on page.";
+                    scanBtn.disabled = false;
                     return;
                 }
 
-                statusMessage.innerText = "Downloading...";
-                
-                fetch(url)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = name + ".jpg";
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        statusMessage.innerText = "Done! Check downloads.";
-                    })
-                    .catch(err => {
-                        statusMessage.innerText = "Error: Website blocked the download.";
-                        alert("Error: This website prevents direct downloads.");
-                    });
-            });
+                // 2. Process every image
+                imgTags.forEach(imgTag => {
+                    let src = imgTag.getAttribute('src');
+                    if (!src) {
+                        checkFinished();
+                        return;
+                    }
 
+                    // Fix relative URLs
+                    if (src.startsWith('//')) src = 'https:' + src;
+                    else if (src.startsWith('/')) src = new URL(url).origin + src;
+                    else if (!src.startsWith('http')) src = url + '/' + src;
+
+                    // 3. Create an invisible image loader to check dimensions
+                    const tempImg = new Image();
+                    tempImg.src = src;
+
+                    tempImg.onload = function() {
+                        // FILTER LOGIC: Check if it meets user requirements
+                        if (this.naturalWidth >= minW && this.naturalHeight >= minH) {
+                            createImageCard(src, this.naturalWidth, this.naturalHeight);
+                            visibleCount++;
+                        }
+                        checkFinished();
+                    };
+
+                    tempImg.onerror = function() {
+                        checkFinished(); // Skip broken images
+                    };
+                });
+
+                function checkFinished() {
+                    processedCount++;
+                    if (processedCount >= imgTags.length) {
+                        scanBtn.disabled = false;
+                        if (visibleCount === 0) {
+                            statusTxt.innerText = `Scanned ${imgTags.length} images, but none matched your size filters.`;
+                        } else {
+                            statusTxt.innerText = `Showing ${visibleCount} images (Filtered ${imgTags.length - visibleCount} small images).`;
+                        }
+                    }
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusTxt.innerText = "❌ Error: Could not scan site.";
+                scanBtn.disabled = false;
+            }
         });
+
+        function createImageCard(url, w, h) {
+            const div = document.createElement('div');
+            div.className = 'img-card';
+
+            div.innerHTML = `
+                <div class="img-wrapper">
+                    <img src="${url}" alt="Scanned Image">
+                    <div class="res-badge">${w} x ${h}</div>
+                </div>
+                <button class="download-btn-small" onclick="downloadOne('${url}')">Download</button>
+            `;
+            grid.appendChild(div);
+        }
+
+        function downloadOne(url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'image.jpg'; 
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
     </script>
 
 </body>
